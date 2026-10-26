@@ -22,4 +22,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/cloudcorprecords/opensourceit:latest
-            ghcr.io/cloudcorprecords/opensourceit:0.1.0
+            ghcr.io/cloudcorprecords/opensourceit:0.2.0
