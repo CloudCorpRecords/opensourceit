@@ -14,11 +14,17 @@ const DB_PATH = join(__dir, 'data', 'db.json');
 const PUBLIC = join(__dir, 'public');
 const DISCLOSURES = ['human', 'ai-assisted', 'ai-built', 'agent'];
 
+let CACHE = null;
 function loadDB() {
-  return JSON.parse(readFileSync(DB_PATH, 'utf8'));
+  if (CACHE) return CACHE;
+  CACHE = JSON.parse(readFileSync(DB_PATH, 'utf8'));
+  return CACHE;
 }
 function saveDB(db) {
-  writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+  CACHE = db;
+  // Serverless hosts (Vercel) have a read-only FS: keep the in-memory copy
+  // authoritative there and persist to disk only where we can.
+  try { writeFileSync(DB_PATH, JSON.stringify(db, null, 2)); } catch {}
 }
 function score(post) { return post.score || 0; }
 function hot(p) {
