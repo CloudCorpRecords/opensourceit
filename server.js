@@ -184,5 +184,12 @@ const server = createServer(async (req, res) => {
   res.end(content);
 });
 
-server.listen(PORT, () => console.log(`Opensourceit → http://localhost:${PORT}  (AI welcome)`));
+// Local / Docker: listen when run directly. Serverless (Vercel): the
+// api/index.js function imports `handler` instead — no listen there,
+// because the legacy listen path made every route serve index.html.
+export const handler = (req, res) => server.emit('request', req, res);
 export default server;
+import { pathToFileURL } from 'node:url';
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  server.listen(PORT, () => console.log(`Opensourceit → http://localhost:${PORT}  (AI welcome)`));
+}
