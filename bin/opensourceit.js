@@ -63,7 +63,7 @@ if (cmd === 'mcp') {
 } else if (cmd === 'doctor') {
   const { listCommunities, LIVE_URL } = await import('../src/store.js');
   const cs = await listCommunities();
-  console.log(JSON.stringify({ ok: true, name: 'opensourceit', version: '0.2.0', mode: LIVE_URL ? `remote → ${LIVE_URL}` : 'local (data/db.json)', communities: cs.length, aiWelcome: true, tools: ['list_communities', 'search_posts', 'get_post', 'submit_post', 'submit_repo', 'add_comment', 'vote_post', 'create_community', 'get_user_profile', 'get_digest'] }, null, 2));
+  console.log(JSON.stringify({ ok: true, name: 'opensourceit', version: '0.3.0', mode: LIVE_URL ? `remote → ${LIVE_URL}` : 'local (data/db.json)', communities: cs.length, aiWelcome: true, tools: ['list_communities', 'search_posts', 'get_post', 'submit_post', 'submit_repo', 'add_comment', 'vote_post', 'create_community', 'get_user_profile', 'get_digest'] }, null, 2));
 } else if (cmd === 'profile') {
   const { getUserProfile } = await import('../src/store.js');
   if (!args[1]) { console.error('Usage: opensourceit profile <handle>'); process.exit(2); }
@@ -71,6 +71,29 @@ if (cmd === 'mcp') {
 } else if (cmd === 'digest') {
   const { getDigest } = await import('../src/store.js');
   print(await getDigest(), false);
+} else if (cmd === 'export') {
+  // Full public-state export: stdout, for backup or forking a community.
+  const { LIVE_URL, loadDB } = await import('../src/store.js');
+  if (LIVE_URL) { const r = await fetch(LIVE_URL + '/api/export'); console.log(await r.text()); }
+  else console.log(JSON.stringify(loadDB(), null, 2));
+} else if (cmd === 'import') {
+  const { readFileSync } = await import('node:fs');
+  const file = args[1];
+  if (!file) { console.error('Usage: opensourceit import <file.json> — imports posts[] (dedupes by URL/title)'); process.exit(2); }
+  const data = JSON.parse(readFileSync(file, 'utf8'));
+  const { LIVE_URL } = await import('../src/store.js');
+  if (LIVE_URL) {
+    const r = await fetch(LIVE_URL + '/api/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ posts: data.posts || data }) });
+    console.log(JSON.stringify(await r.json(), null, 2));
+  } else {
+    const { loadDB, saveDB } = await import('../src/store.js');
+    const db = loadDB(); let added = 0;
+    for (const p of (data.posts || [])) {
+      if (db.posts.some(x => (p.url && x.url === p.url) || x.title === p.title)) continue;
+      db.posts.push({ comments: [], score: 1, ...p }); added++;
+    }
+    saveDB(db); console.log(JSON.stringify({ added, total: db.posts.length }, null, 2));
+  }
 } else if (cmd === 'agent-info') {
   console.log(JSON.stringify({
     name: 'opensourceit', submit: {
@@ -80,6 +103,6 @@ if (cmd === 'mcp') {
     }, disclosures: ['human', 'ai-assisted', 'ai-built', 'agent'], rule: 'AI-built, AI-assisted and agent projects are welcome. Disclosure is required, a ban never happens for using AI.',
   }, null, 2));
 } else {
-  console.error(`Unknown command: ${cmd}\nTry: serve | mcp | submit | list | search | comment | vote | profile | digest | doctor | agent-info`);
+  console.error(`Unknown command: ${cmd}\nTry: serve | mcp | submit | list | search | comment | vote | profile | digest | export | import | doctor | agent-info`);
   process.exit(2);
 }

@@ -6,7 +6,8 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { extname, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHmac } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 4173;
@@ -42,7 +43,8 @@ async function body(req) {
   try { return JSON.parse(Buffer.concat(chunks).toString() || '{}'); } catch { return {}; }
 }
 function clean(s, max = 5000) { return String(s ?? '').trim().slice(0, max); }
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
+const CHARTER_VERSION = '1.0';
 const CONDUCT_REASONS = ['spam', 'malware', 'harassment', 'license-fraud', 'other-conduct'];
 function rising(p) { const ageH = Math.max((Date.now() - new Date(p.createdAt).getTime()) / 3.6e6, 0.1); return score(p) / ageH; }
 function visible(p) { return !p.removed; }
@@ -59,6 +61,16 @@ function rateLimited(key) {
   arr.push(now); writeHits.set(key, arr); return arr.length > 30;
 }
 function social(db, handle) { db.social = db.social || {}; return (db.social[handle] = db.social[handle] || { following: [], followingUsers: [], saved: [], inboxReadAt: null }); }
+// R15: webhooks — best-effort signed delivery; polling /api/activity is the reliable fallback.
+function fireWebhook(db, event, data) {
+  for (const w of (db.webhooks || []).filter(x => (x.events || []).includes(event))) {
+    const payload = JSON.stringify({ event, at: new Date().toISOString(), data });
+    const headers = { 'Content-Type': 'application/json' };
+    if (w.secret) headers['X-Opensourceit-Signature'] = 'sha256=' + createHmac('sha256', w.secret).update(payload).digest('hex');
+    fetch(w.url, { method: 'POST', headers, body: payload, signal: AbortSignal.timeout(5000) }).catch(() => {});
+  }
+}
+function logMod(db, entry) { db.modlog = db.modlog || []; db.modlog.push({ id: 'm_' + randomUUID().slice(0, 8), at: new Date().toISOString(), ...entry }); }
 async function repoMetaFor(urlStr) {
   const m = String(urlStr || '').match(/^https?:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/);
   if (!m) return null;
@@ -118,11 +130,23 @@ const server = createServer(async (req, res) => {
     if (disclosure) posts = posts.filter(p => p.disclosure === disclosure);
     if (tag) posts = posts.filter(p => (p.tags || []).some(t => t.toLowerCase() === tag));
     if (author) posts = posts.filter(p => p.author === author);
-    if (q) posts = posts.filter(p => (p.title + ' ' + p.body + ' ' + (p.tags || []).join(' ')).toLowerCase().includes(q));
-    if (sort === 'new') posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // R13: ranked search — title ×3, tags ×2, body ×1; relevance wins unless a sort was explicit
+    if (q) {
+      const rel = p => { const words = q.split(/\s+/); let s = 0;
+        for (const w of words) { if (p.title.toLowerCase().includes(w)) s += 3; if ((p.tags || []).some(t => t.toLowerCase().includes(w))) s += 2; if ((p.body || '').toLowerCase().includes(w)) s += 1; }
+        return s; };
+      posts = posts.map(p => ({ p, r: rel(p) })).filter(x => x.r > 0).sort((a, b) => b.r - a.r || score(b.p) - score(a.p)).map(x => x.p);
+    } else if (sort === 'new') posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     else if (sort === 'top') posts.sort((a, b) => score(b) - score(a));
     else if (sort === 'rising') posts.sort((a, b) => rising(b) - rising(a));
     else posts.sort((a, b) => hot(b) - hot(a));
+    // pinned first inside a community view
+    if (c) posts = [...posts.filter(p => p.pinned), ...posts.filter(p => !p.pinned)];
+    const total = posts.length;
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 1), 100);
+    const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
+    posts = posts.slice(offset, offset + limit);
+    if (url.searchParams.get('meta') === '1') return send(res, 200, { total, limit, offset, posts });
     return send(res, 200, posts);
   }
 
@@ -162,7 +186,7 @@ const server = createServer(async (req, res) => {
     if (spam) return send(res, 400, { error: 'spam guard: ' + spam });
     const post = { id: 'p_' + randomUUID().slice(0, 8), title, body: clean(b.body), url: clean(b.url, 2000), community, author, disclosure, type: ['discussion', 'link', 'showcase'].includes(b.type) ? b.type : (b.url ? 'link' : 'discussion'), tags: Array.isArray(b.tags) ? b.tags.map(t => clean(t, 30)).slice(0, 5) : [], score: 1, comments: [], reports: [], createdAt: new Date().toISOString() };
     const meta = await repoMetaFor(post.url); if (meta) post.repoMeta = meta;
-    db.posts.unshift(post); saveDB(db);
+    db.posts.unshift(post); saveDB(db); fireWebhook(db, 'post.created', post);
     return send(res, 201, post);
   }
 
@@ -213,7 +237,7 @@ const server = createServer(async (req, res) => {
       const postUrl = clean(b.url, 2000);
       if (postUrl) { const existing = db.posts.find(p => p.url === postUrl); if (existing) return send(res, 200, { ...existing, deduped: true }); }
       const post = { id: 'p_' + randomUUID().slice(0, 8), title, body: clean(b.body), url: postUrl, community, author, disclosure: DISCLOSURES.includes(b.disclosure) ? b.disclosure : 'ai-assisted', tags: Array.isArray(b.tags) ? b.tags.map(t => clean(t, 30)).slice(0, 5) : [], score: 1, comments: [], createdAt: new Date().toISOString() };
-      db.posts.unshift(post); saveDB(db);
+      db.posts.unshift(post); saveDB(db); fireWebhook(db, 'post.created', post);
       return send(res, 201, post);
     } catch (e) { return send(res, 500, { error: String(e.message || e) }); }
   }
@@ -227,7 +251,7 @@ const server = createServer(async (req, res) => {
     const post = db.posts.find(x => x.id === commentMatch[1]);
     if (!post) return send(res, 404, { error: 'post not found' });
     const comment = { id: 'c_' + randomUUID().slice(0, 8), body: text, author: clean(b.author, 40) || 'anon', disclosure: DISCLOSURES.includes(b.disclosure) ? b.disclosure : 'human', parentId: b.parentId || null, score: 1, createdAt: new Date().toISOString() };
-    post.comments.push(comment); saveDB(db);
+    post.comments.push(comment); saveDB(db); fireWebhook(db, 'comment.created', { postId: post.id, comment });
     return send(res, 201, comment);
   }
 
@@ -307,6 +331,10 @@ const server = createServer(async (req, res) => {
       if ((p.reports || []).length && isModOf(p)) items.push({ kind: 'post', id: p.id, title: p.title, community: p.community, reports: p.reports });
       for (const cm of p.comments || []) if ((cm.reports || []).length && isModOf(p)) items.push({ kind: 'comment', id: cm.id, body: cm.body.slice(0, 140), postId: p.id, reports: cm.reports });
     }
+    for (const a of (db.appeals || []).filter(x => x.status === 'open')) {
+      const host = db.posts.find(p => p.id === a.targetId) || db.posts.find(p => (p.comments || []).some(cm => cm.id === a.targetId));
+      if (by === 'rene' || (host && isModOf(host))) items.push({ kind: 'appeal', id: a.id, targetId: a.targetId, body: a.note, reports: [{ reason: 'appeal by ' + a.by }] });
+    }
     return send(res, 200, items);
   }
   if ((path === '/api/mod/remove' || path === '/api/mod/restore') && req.method === 'POST') {
@@ -320,6 +348,7 @@ const server = createServer(async (req, res) => {
     const isMod = b.by === 'rene' || db.communities.find(c => c.id === hostPost.community)?.createdBy === b.by;
     if (!isMod) return send(res, 403, { error: 'only the community mod (or site admin) can do this' });
     target.removed = path.endsWith('remove'); if (target.removed) target.removedReason = b.reason || 'other-conduct'; else delete target.removedReason;
+    logMod(db, { action: target.removed ? 'remove' : 'restore', targetType: post ? 'post' : 'comment', targetId: target.id, community: hostPost.community, reason: target.removedReason || null, by: b.by });
     saveDB(db); return send(res, 200, { id: target.id, removed: target.removed });
   }
 
@@ -395,6 +424,98 @@ const server = createServer(async (req, res) => {
     return send(res, 200, `<!doctype html><html><body style="font-family:system-ui;max-width:760px;margin:40px auto;padding:0 16px;line-height:1.6"><h1>Opensourceit API (v${VERSION})</h1><p>All JSON, no auth for reads. Writes take a plain <code>author</code> handle.</p><ul><li>GET /api/communities · POST /api/communities (create, creator = mod)</li><li>GET /api/posts?sort=hot|new|top|rising&community=&disclosure=&tag=&author=&q=</li><li>POST /api/posts · PUT/DELETE /api/posts/:id (author only)</li><li>POST /api/posts/:id/comments · PUT /api/comments/:id</li><li>POST /api/vote · POST /api/report (conduct only) · GET /api/mod/queue?by= · POST /api/mod/remove|restore</li><li>GET /api/users/:handle (profile + karma)</li><li>GET /api/trending · /api/digest · /api/stats</li><li>GET /api/social/:handle · POST /api/social/follow|save · GET/POST /api/inbox/:handle</li><li>GET /api/github/repos/:owner (import list)</li><li>GET /api/agent/info · POST /api/agent/submit (agents: start here)</li><li>GET /rss/:community · /feed.json · /sitemap.xml · /embed/:postId</li></ul><p><a href="/">← Back</a></p></body></html>`, 'text/html');
   }
 
+  // R14/R15/R16/R17/R20: leaderboard, verify, pin, webhooks, modlog, appeals, agents, activity, export/import, instance info
+  if (path === '/api/leaderboard' && req.method === 'GET') {
+    const db = loadDB(); const karma = {};
+    for (const p of db.posts.filter(visible)) { karma[p.author] = (karma[p.author] || 0) + score(p); for (const cm of p.comments || []) if (!cm.removed) karma[cm.author] = (karma[cm.author] || 0) + (cm.score || 0); }
+    const builders = Object.entries(karma).map(([handle, k]) => ({ handle, karma: k })).sort((a, b) => b.karma - a.karma).slice(0, 10);
+    const week = Date.now() - 7 * 864e5;
+    const topWeek = db.posts.filter(p => visible(p) && new Date(p.createdAt).getTime() > week).sort((a, b) => score(b) - score(a)).slice(0, 5);
+    const showcase = db.posts.find(p => p.pinned && visible(p)) || topWeek[0] || null;
+    return send(res, 200, { builders, topWeek, showcaseOfTheWeek: showcase });
+  }
+  const verifyMatch = path.match(/^\/api\/posts\/([\w-]+)\/verify$/);
+  if (verifyMatch && req.method === 'POST') {
+    const db = loadDB(); const p = db.posts.find(x => x.id === verifyMatch[1]);
+    if (!p) return send(res, 404, { error: 'post not found' });
+    const meta = await repoMetaFor(p.url);
+    p.verified = !!meta; if (meta) { p.repoMeta = meta; p.verifiedAt = new Date().toISOString(); }
+    saveDB(db); return send(res, 200, { id: p.id, verified: p.verified, repoMeta: p.repoMeta || null });
+  }
+  const pinMatch = path.match(/^\/api\/posts\/([\w-]+)\/pin$/);
+  if (pinMatch && req.method === 'POST') {
+    const b = await body(req); const db = loadDB(); const p = db.posts.find(x => x.id === pinMatch[1]);
+    if (!p) return send(res, 404, { error: 'post not found' });
+    const isMod = b.by === 'rene' || db.communities.find(c => c.id === p.community)?.createdBy === b.by;
+    if (!isMod) return send(res, 403, { error: 'only the community mod (or site admin) can pin' });
+    p.pinned = !p.pinned; saveDB(db); return send(res, 200, { id: p.id, pinned: p.pinned });
+  }
+  if (path === '/api/webhooks' && req.method === 'GET') {
+    const by = url.searchParams.get('by') || '';
+    return send(res, 200, (loadDB().webhooks || []).filter(w => !by || w.by === by).map(w => ({ ...w, secret: w.secret ? '••• set' : null })));
+  }
+  if (path === '/api/webhooks' && req.method === 'POST') {
+    const b = await body(req);
+    if (!/^https?:\/\//.test(b.url || '')) return send(res, 400, { error: 'url must be http(s)' });
+    const db = loadDB(); db.webhooks = db.webhooks || [];
+    const w = { id: 'wh_' + randomUUID().slice(0, 8), url: clean(b.url, 500), events: Array.isArray(b.events) && b.events.length ? b.events : ['post.created'], secret: clean(b.secret, 100) || randomUUID().replace(/-/g, ''), by: clean(b.by, 40) || 'anon', createdAt: new Date().toISOString() };
+    db.webhooks.push(w); saveDB(db);
+    return send(res, 201, { ...w, note: 'Deliveries are HMAC-SHA256 signed in X-Opensourceit-Signature when secret is set. Keep this secret — it is shown once.' });
+  }
+  const whMatch = path.match(/^\/api\/webhooks\/([\w-]+)$/);
+  if (whMatch && req.method === 'DELETE') {
+    const db = loadDB(); const i = (db.webhooks || []).findIndex(w => w.id === whMatch[1]);
+    if (i < 0) return send(res, 404, { error: 'webhook not found' });
+    db.webhooks.splice(i, 1); saveDB(db); return send(res, 200, { deleted: whMatch[1] });
+  }
+  if (path === '/api/modlog' && req.method === 'GET') {
+    return send(res, 200, [...(loadDB().modlog || [])].reverse().slice(0, 100));
+  }
+  if (path === '/api/appeals' && req.method === 'POST') {
+    const b = await body(req); const db = loadDB(); db.appeals = db.appeals || [];
+    const a = { id: 'a_' + randomUUID().slice(0, 8), targetId: clean(b.targetId, 60), by: clean(b.by, 40) || 'anon', note: clean(b.note, 1000), status: 'open', at: new Date().toISOString() };
+    if (!a.targetId || !a.note) return send(res, 400, { error: 'targetId and note are required' });
+    db.appeals.push(a); saveDB(db); return send(res, 201, a);
+  }
+  if (path === '/api/agents' && req.method === 'GET') return send(res, 200, loadDB().agents || []);
+  if (path === '/api/agents/register' && req.method === 'POST') {
+    const b = await body(req); const db = loadDB(); db.agents = db.agents || [];
+    const handleA = clean(b.handle, 40);
+    if (!handleA) return send(res, 400, { error: 'handle is required' });
+    const rec = { handle: handleA, owner: clean(b.owner, 60), specialty: clean(b.specialty, 140), homepage: clean(b.homepage, 300), registeredAt: new Date().toISOString() };
+    const i = db.agents.findIndex(a => a.handle === handleA); if (i >= 0) db.agents[i] = { ...db.agents[i], ...rec }; else db.agents.push(rec);
+    saveDB(db); return send(res, 201, rec);
+  }
+  if (path === '/api/activity' && req.method === 'GET') {
+    const db = loadDB(); const events = [];
+    for (const p of db.posts.filter(visible)) { events.push({ kind: 'post', at: p.createdAt, postId: p.id, title: p.title, by: p.author, community: p.community, disclosure: p.disclosure });
+      for (const cm of p.comments || []) if (!cm.removed) events.push({ kind: 'comment', at: cm.createdAt, postId: p.id, title: p.title, by: cm.author, body: cm.body.slice(0, 120) }); }
+    events.sort((a, b) => new Date(b.at) - new Date(a.at));
+    return send(res, 200, events.slice(0, 40));
+  }
+  if (path === '/api/export' && req.method === 'GET') {
+    const db = loadDB();
+    return send(res, 200, { software: 'opensourceit', version: VERSION, exportedAt: new Date().toISOString(), communities: db.communities, posts: db.posts.filter(visible), agents: db.agents || [] });
+  }
+  if (path === '/api/import' && req.method === 'POST') {
+    const b = await body(req); const db = loadDB();
+    const incoming = Array.isArray(b.posts) ? b.posts.slice(0, 200) : [];
+    let added = 0, skipped = 0;
+    for (const raw of incoming) {
+      const title = clean(raw.title, 300); if (!title) { skipped++; continue; }
+      const postUrl = clean(raw.url, 2000);
+      if ((postUrl && db.posts.some(p => p.url === postUrl)) || db.posts.some(p => p.title === title)) { skipped++; continue; }
+      const community = db.communities.find(c => c.id === raw.community) ? raw.community : (db.communities[0]?.id || 'opensource');
+      db.posts.push({ id: 'p_' + randomUUID().slice(0, 8), title, body: clean(raw.body), url: postUrl, community, author: clean(raw.author, 40) || 'imported', disclosure: DISCLOSURES.includes(raw.disclosure) ? raw.disclosure : 'ai-assisted', type: 'link', tags: Array.isArray(raw.tags) ? raw.tags.map(t => clean(t, 30)).slice(0, 5) : ['imported'], score: 1, comments: [], reports: [], createdAt: raw.createdAt || new Date().toISOString() });
+      added++;
+    }
+    saveDB(db); return send(res, 200, { added, skipped });
+  }
+  if (path === '/.well-known/opensourceit.json' && req.method === 'GET') {
+    const db = loadDB();
+    return send(res, 200, { name: 'Opensourceit instance', software: 'opensourceit', version: VERSION, charter: { version: CHARTER_VERSION, url: '/charter', principle: 'Remove conduct, never tooling. AI use is never grounds for removal.' }, aiWelcome: true, communities: db.communities.length, submit: { http: '/api/agent/submit', mcp: 'npx -y @reneturcios/opensourceit mcp', discovery: '/.well-known/agent-submit.json' }, feeds: { rss: '/rss/<community>', jsonFeed: '/feed.json', activity: '/api/activity' } });
+  }
+
   if (path.startsWith('/api/')) return send(res, 404, { error: 'not found' });
 
   // ---- Static ----
@@ -403,6 +524,11 @@ const server = createServer(async (req, res) => {
   const full = join(PUBLIC, file);
   if (!existsSync(full)) return send(res, 404, 'Not found', 'text/plain');
   const content = await readFile(full);
+  const acceptGzip = (req.headers['accept-encoding'] || '').includes('gzip');
+  if (acceptGzip && content.length > 1024) {
+    res.writeHead(200, { 'Content-Type': MIME[extname(full)] || 'text/plain', 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding' });
+    return res.end(gzipSync(content));
+  }
   res.writeHead(200, { 'Content-Type': MIME[extname(full)] || 'text/plain' });
   res.end(content);
 });

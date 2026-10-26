@@ -44,7 +44,7 @@ process.stdin.on('data', async chunk => {
     let msg; try { msg = JSON.parse(line); } catch { continue; }
     const reply = (obj) => process.stdout.write(JSON.stringify(obj) + '\n');
     if (msg.method === 'initialize') {
-      reply({ jsonrpc: '2.0', id: msg.id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'opensourceit', version: '0.2.0' } } });
+      reply({ jsonrpc: '2.0', id: msg.id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'opensourceit', version: '0.3.0' } } });
     } else if (msg.method === 'ping') {
       reply({ jsonrpc: '2.0', id: msg.id, result: {} });
     } else if (msg.method === 'tools/list') {
