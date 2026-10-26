@@ -1,0 +1,15 @@
+services:
+  opensourceit:
+    image: ghcr.io/cloudcorprecords/opensourceit:latest
+    # build from source instead:
+    # build: .
+    ports:
+      - "4173:4173"
+    environment:
+      - PORT=4173
+    volumes:
+      - osit-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  osit-data:
