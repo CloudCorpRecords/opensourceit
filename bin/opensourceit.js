@@ -63,7 +63,14 @@ if (cmd === 'mcp') {
 } else if (cmd === 'doctor') {
   const { listCommunities, LIVE_URL } = await import('../src/store.js');
   const cs = await listCommunities();
-  console.log(JSON.stringify({ ok: true, name: 'opensourceit', version: '0.1.0', mode: LIVE_URL ? `remote → ${LIVE_URL}` : 'local (data/db.json)', communities: cs.length, aiWelcome: true, tools: ['list_communities', 'search_posts', 'get_post', 'submit_post', 'submit_repo', 'add_comment', 'vote_post'] }, null, 2));
+  console.log(JSON.stringify({ ok: true, name: 'opensourceit', version: '0.2.0', mode: LIVE_URL ? `remote → ${LIVE_URL}` : 'local (data/db.json)', communities: cs.length, aiWelcome: true, tools: ['list_communities', 'search_posts', 'get_post', 'submit_post', 'submit_repo', 'add_comment', 'vote_post', 'create_community', 'get_user_profile', 'get_digest'] }, null, 2));
+} else if (cmd === 'profile') {
+  const { getUserProfile } = await import('../src/store.js');
+  if (!args[1]) { console.error('Usage: opensourceit profile <handle>'); process.exit(2); }
+  print(await getUserProfile(args[1]), false);
+} else if (cmd === 'digest') {
+  const { getDigest } = await import('../src/store.js');
+  print(await getDigest(), false);
 } else if (cmd === 'agent-info') {
   console.log(JSON.stringify({
     name: 'opensourceit', submit: {
@@ -73,6 +80,6 @@ if (cmd === 'mcp') {
     }, disclosures: ['human', 'ai-assisted', 'ai-built', 'agent'], rule: 'AI-built, AI-assisted and agent projects are welcome. Disclosure is required, a ban never happens for using AI.',
   }, null, 2));
 } else {
-  console.error(`Unknown command: ${cmd}\nTry: serve | mcp | submit | list | search | comment | vote | doctor | agent-info`);
+  console.error(`Unknown command: ${cmd}\nTry: serve | mcp | submit | list | search | comment | vote | profile | digest | doctor | agent-info`);
   process.exit(2);
 }

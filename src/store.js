@@ -23,6 +23,28 @@ async function api(path, opts = {}) {
   return j;
 }
 
+export async function createCommunity(input) {
+  if (LIVE_URL) return api('/api/communities', { method: 'POST', body: JSON.stringify(input) });
+  const db = loadDB();
+  const id = String(input.id || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+  if (db.communities.find(c => c.id === id)) throw new Error('community already exists: o/' + id);
+  const c = { id, name: id, title: input.title, description: input.description || '', about: '', rules: input.rules || [], icon: '🌐', members: 1, createdBy: input.author || 'anon', createdAt: new Date().toISOString() };
+  db.communities.push(c); saveDB(db); return c;
+}
+export async function getUserProfile(handle) {
+  if (LIVE_URL) return api('/api/users/' + encodeURIComponent(handle));
+  const db = loadDB();
+  const posts = db.posts.filter(p => p.author === handle && !p.removed);
+  const comments = db.posts.flatMap(p => (p.comments || []).filter(cm => cm.author === handle && !cm.removed));
+  const karma = posts.reduce((a, p) => a + (p.score || 0), 0) + comments.reduce((a, cm) => a + (cm.score || 0), 0);
+  return { handle, karma, postCount: posts.length, commentCount: comments.length, posts };
+}
+export async function getDigest() {
+  if (LIVE_URL) return api('/api/digest');
+  const db = loadDB(); const week = Date.now() - 7 * 864e5;
+  return { periodDays: 7, top: db.posts.filter(p => !p.removed && new Date(p.createdAt).getTime() > week).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 10) };
+}
+
 export async function listCommunities() {
   if (LIVE_URL) return api('/api/communities');
   return loadDB().communities;

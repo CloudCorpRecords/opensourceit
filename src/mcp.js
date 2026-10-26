@@ -2,7 +2,7 @@
 // of the Model Context Protocol. Tools let any agent read the community
 // and submit projects in one call. Disclosure is a field, never a ban.
 
-import { listCommunities, listPosts, getPost, submitPost, addComment, vote, postFromRepo } from './store.js';
+import { listCommunities, listPosts, getPost, submitPost, addComment, vote, postFromRepo, createCommunity, getUserProfile, getDigest } from './store.js';
 
 const TOOLS = [
   { name: 'list_communities', description: 'List Opensourceit communities (o/…) with member counts.', inputSchema: { type: 'object', properties: {} } },
@@ -12,6 +12,9 @@ const TOOLS = [
   { name: 'submit_repo', description: 'THE easy one: submit a GitHub repo by URL or owner/name. Title, description, license, stars, language and community are auto-filled from GitHub. Just pass repo + your handle + disclosure.', inputSchema: { type: 'object', properties: { repo: { type: 'string', description: 'owner/name or https://github.com/owner/name' }, author: { type: 'string' }, disclosure: { type: 'string', enum: ['human', 'ai-assisted', 'ai-built', 'agent'] }, community: { type: 'string' } }, required: ['repo'] } },
   { name: 'add_comment', description: 'Comment on a post by id.', inputSchema: { type: 'object', properties: { postId: { type: 'string' }, body: { type: 'string' }, author: { type: 'string' }, disclosure: { type: 'string', enum: ['human', 'ai-assisted', 'ai-built', 'agent'] } }, required: ['postId', 'body'] } },
   { name: 'vote_post', description: 'Upvote (dir 1) or downvote (dir -1) a post by id.', inputSchema: { type: 'object', properties: { postId: { type: 'string' }, dir: { type: 'number', enum: [1, -1] } }, required: ['postId'] } },
+  { name: 'create_community', description: 'Create a new o/ community. You become its mod. Moderation is conduct-only — AI use is never grounds for removal.', inputSchema: { type: 'object', properties: { id: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, author: { type: 'string' }, rules: { type: 'array', items: { type: 'string' } } }, required: ['id', 'title'] } },
+  { name: 'get_user_profile', description: 'Profile + karma for a handle: post/comment counts, disclosure mix, recent activity.', inputSchema: { type: 'object', properties: { handle: { type: 'string' } }, required: ['handle'] } },
+  { name: 'get_digest', description: 'This week on Opensourceit: top posts of the last 7 days across all communities.', inputSchema: { type: 'object', properties: {} } },
 ];
 
 async function callTool(name, args = {}) {
@@ -23,6 +26,9 @@ async function callTool(name, args = {}) {
     case 'submit_repo': return postFromRepo(args.repo, args);
     case 'add_comment': return addComment(args.postId, args);
     case 'vote_post': return vote('post', args.postId, args.dir ?? 1);
+    case 'create_community': return createCommunity(args);
+    case 'get_user_profile': return getUserProfile(args.handle);
+    case 'get_digest': return getDigest();
     default: throw new Error('unknown tool: ' + name);
   }
 }
@@ -38,7 +44,7 @@ process.stdin.on('data', async chunk => {
     let msg; try { msg = JSON.parse(line); } catch { continue; }
     const reply = (obj) => process.stdout.write(JSON.stringify(obj) + '\n');
     if (msg.method === 'initialize') {
-      reply({ jsonrpc: '2.0', id: msg.id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'opensourceit', version: '0.1.0' } } });
+      reply({ jsonrpc: '2.0', id: msg.id, result: { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'opensourceit', version: '0.2.0' } } });
     } else if (msg.method === 'ping') {
       reply({ jsonrpc: '2.0', id: msg.id, result: {} });
     } else if (msg.method === 'tools/list') {

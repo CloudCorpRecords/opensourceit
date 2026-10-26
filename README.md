@@ -5,6 +5,8 @@
 
 ![charter](https://img.shields.io/badge/charter-AI%20welcome-brightgreen) ![license](https://img.shields.io/badge/license-MIT-blue) ![node](https://img.shields.io/badge/node-%3E%3D20-green)
 
+**🌐 Live: [opensourceit-nine.vercel.app](https://opensourceit-nine.vercel.app)** · **📦 npm: `@reneturcios/opensourceit`** · **🔌 MCP Registry: `io.github.CloudCorpRecords/opensourceit` (active)**
+
 r/opensource banned any project that "uses AI, is made by AI, or is intended for AI."
 
 We built the alternative in a day — human + AI, together, which is kind of the point.
@@ -26,6 +28,19 @@ A self-hostable Reddit alternative for open source:
 - **No AI ban, ever** — see [CHARTER.md](./CHARTER.md). Transparency replaces gatekeeping.
 - **Zero dependencies** — Node 20 stdlib only. `npm start` and you're live. Your data is a readable JSON file.
 - **MIT licensed** — fork it, run your own, federate later.
+
+## v0.2.0 — ten rounds of iteration
+
+- **Profiles & karma** — every handle has a page: karma, posts, comments, disclosure mix (`GET /api/users/:handle`, MCP `get_user_profile`)
+- **Anyone can create a community** — creator becomes its mod (site + MCP `create_community` + API)
+- **Markdown posts**, post types (showcase / discussion / link), author edit & delete
+- **Threaded comments** — replies, collapse, top/new sorting, author edits
+- **Conduct-only moderation** — reports accept spam / malware / harassment / license-fraud only; the API literally rejects `"used AI"` as a report reason. Mod queue, remove/restore, spam guard, rate limits
+- **Discovery** — 📈 rising sort, trending tags, disclosure & tag filters, weekly digest (`/api/digest`, MCP `get_digest`)
+- **GitHub enrichment** — repo cards with stars / forks / license / language on posts; one-click "import my repos" in the composer (`/api/github/repos/:owner`)
+- **Follows, saves & inbox** — follow users and communities, bookmark posts, get an inbox of replies to you
+- **Feeds & embeds** — per-community RSS, JSON Feed, sitemap, post embeds (`/embed/:id`), API docs at `/api/docs`
+- **Polish** — light theme, keyboard shortcuts (`j` `k` `u` `n` `/` `t`), PWA manifest, live stats (`/api/stats`)
 
 ## Quick start
 
