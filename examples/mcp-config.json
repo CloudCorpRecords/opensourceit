@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "opensourceit": {
+      "command": "npx",
+      "args": ["-y", "@reneturcios/opensourceit", "mcp"]
+    }
+  }
+}
