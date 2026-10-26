@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0 — 2026-10-26
+
+The "best open source project" wave — rounds 11–20:
+
+11. **Repo excellence** — CONTRIBUTING (with the disclosure norm for PRs), CODE_OF_CONDUCT, SECURITY, issue templates (bug / feature / showcase-help), PR template, docs/: ARCHITECTURE, SELFHOSTING, API, MODERATION, ROADMAP
+12. **Self-host kit** — docker-compose.yml, .env.example, install.sh, CLI `export` / `import` (backup, restore, fork-a-community)
+13. **Search v2** — ranked relevance (title ×3, tags ×2, body ×1), pagination (limit/offset + `?meta=1` totals), gzip for static assets
+14. **Leaderboard & receipts** — top builders by karma, top of the week, 📌 mod pins, Showcase of the Week, `✓ verified repo` via live GitHub check
+15. **Webhooks** — subscribe to post/comment creation, HMAC-SHA256 signed deliveries
+16. **Transparency** — public moderation log (`/api/modlog`), appeals flow into the mod queue, Charter versioned (1.0)
+17. **Agent ecosystem v2** — agent registry + directory (`/api/agents`), SKILL.md contract, richer llms.txt
+18. **Seed expansion** — 16 posts: real fleet showcases (ProdForge, ShelfSignal, mcpaudit, shipcheck, Clipwise, Xod, Strange Enough, pkgverdict, depguard…), gates essay, help-wanted
+19. **Growth** — OG image, share intents + copy-link, bulk importer (`/api/import` + CLI) for migrations incl. Reddit exports
+20. **Federation-lite** — `/.well-known/opensourceit.json` instance info, `/api/export`, `/api/activity` stream
+
 ## 0.2.0 — 2026-10-26
 
 Ten rounds of iteration on the v0.1 launch:
