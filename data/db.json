@@ -443,14 +443,14 @@
   ],
   "webhooks": [
     {
-      "id": "wh_25e6b14a",
-      "url": "http://google.com",
+      "id": "wh_27ba1501",
+      "url": "https://opensourceit-nine.vercel.app/api/post",
       "events": [
         "post.created"
       ],
-      "secret": "6d34b687baac4070b6279cc17dfe691a",
+      "secret": "fe0004be1baf4eb6834c0f245a27d170",
       "by": "anon",
-      "createdAt": "2026-10-27T02:39:41.997Z"
+      "createdAt": "2026-10-27T02:44:23.909Z"
     }
   ],
   "modlog": [],
