@@ -18,11 +18,11 @@
    "transport": {
     "type": "stdio"
    },
-   "version": "0.4.0"
+   "version": "0.5.0"
   },
   {
    "environmentVariables": [],
-   "identifier": "ghcr.io/cloudcorprecords/opensourceit:0.4.0",
+   "identifier": "ghcr.io/cloudcorprecords/opensourceit:0.5.0",
    "registryType": "oci",
    "runtimeArguments": [
     {
@@ -45,5 +45,5 @@
   "url": "https://github.com/CloudCorpRecords/opensourceit"
  },
  "title": "Opensourceit",
- "version": "0.4.0"
+ "version": "0.5.0"
 }

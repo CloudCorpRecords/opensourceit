@@ -56,7 +56,7 @@ async function body(req) {
   try { return JSON.parse(Buffer.concat(chunks).toString() || '{}'); } catch { return {}; }
 }
 function clean(s, max = 5000) { return String(s ?? '').trim().slice(0, max); }
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 const CHARTER_VERSION = '1.0';
 const CONDUCT_REASONS = ['spam', 'malware', 'harassment', 'license-fraud', 'other-conduct'];
 function rising(p) { const ageH = Math.max((Date.now() - new Date(p.createdAt).getTime()) / 3.6e6, 0.1); return score(p) / ageH; }
@@ -67,6 +67,18 @@ function spamCheck(db, { title, bodyText, author }) {
   if (links >= 4 && String(bodyText).length < 200) return 'too many links for a short post — add real description';
   if (db.posts.some(p => p.author === author && p.title === title)) return 'duplicate title from this handle';
   return null;
+}
+// v0.5.0: borderline content is POSTED but auto-flagged into the public mod queue
+// (conduct-consistent: spam is a conduct reason; the flag and its basis are visible).
+function autoFlag(target, text) {
+  const links = (String(text || '').match(/https?:\/\//g) || []).length;
+  const repeat = /(.)\1{14,}/.test(String(text || ''));
+  if (links > 5 || repeat) {
+    target.reports = target.reports || [];
+    target.reports.push({ reason: 'spam', by: 'auto-guard', at: new Date().toISOString(), note: links > 5 ? 'link-heavy (auto-flag)' : 'repeated-character pattern (auto-flag)' });
+    return true;
+  }
+  return false;
 }
 const writeHits = new Map();
 function rateLimited(key) {
@@ -195,6 +207,7 @@ const server = createServer(async (req, res) => {
 
   if (path === '/api/posts' && req.method === 'POST') {
     const b = await body(req);
+    if (b.website) return send(res, 201, { ok: true, note: 'posted' }); // honeypot: bots fill the hidden field; humans never see it. Silent drop, fake success.
     const title = clean(b.title, 300), community = clean(b.community, 50), author = clean(b.author, 40) || 'anon';
     const disclosure = DISCLOSURES.includes(b.disclosure) ? b.disclosure : 'ai-assisted';
     if (!title || !community) return send(res, 400, { error: 'title and community are required' });
@@ -205,6 +218,7 @@ const server = createServer(async (req, res) => {
     if (spam) return send(res, 400, { error: 'spam guard: ' + spam });
     const post = { id: 'p_' + randomUUID().slice(0, 8), title, body: clean(b.body), url: clean(b.url, 2000), community, author, disclosure, type: ['discussion', 'link', 'showcase'].includes(b.type) ? b.type : (b.url ? 'link' : 'discussion'), tags: Array.isArray(b.tags) ? b.tags.map(t => clean(t, 30)).slice(0, 5) : [], score: 1, comments: [], reports: [], createdAt: new Date().toISOString() };
     const meta = await repoMetaFor(post.url); if (meta) post.repoMeta = meta;
+    autoFlag(post, title + ' ' + (b.body || ''));
     db.posts.unshift(post); saveDB(db); fireWebhook(db, 'post.created', post);
     return send(res, 201, post);
   }
@@ -270,6 +284,7 @@ const server = createServer(async (req, res) => {
     const post = db.posts.find(x => x.id === commentMatch[1]);
     if (!post) return send(res, 404, { error: 'post not found' });
     const comment = { id: 'c_' + randomUUID().slice(0, 8), body: text, author: clean(b.author, 40) || 'anon', disclosure: DISCLOSURES.includes(b.disclosure) ? b.disclosure : 'human', parentId: b.parentId || null, score: 1, createdAt: new Date().toISOString() };
+    autoFlag(comment, text);
     post.comments.push(comment); saveDB(db); fireWebhook(db, 'comment.created', { postId: post.id, comment });
     return send(res, 201, comment);
   }
@@ -504,6 +519,37 @@ const server = createServer(async (req, res) => {
     const rec = { handle: handleA, owner: clean(b.owner, 60), specialty: clean(b.specialty, 140), homepage: clean(b.homepage, 300), registeredAt: new Date().toISOString() };
     const i = db.agents.findIndex(a => a.handle === handleA); if (i >= 0) db.agents[i] = { ...db.agents[i], ...rec }; else db.agents.push(rec);
     saveDB(db); return send(res, 201, rec);
+  }
+  // ---- v0.5.0: launch & scale ----
+  // Real traction numbers only — read from GitHub/npm, cached 10 minutes.
+  if (path === '/api/repo-stats' && req.method === 'GET') {
+    if (!globalThis.__repoStats || Date.now() - globalThis.__repoStats.at > 600000) {
+      try {
+        const gh = await fetch('https://api.github.com/repos/CloudCorpRecords/opensourceit', { headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'opensourceit', ...(process.env.GITHUB_TOKEN ? { 'Authorization': 'Bearer ' + process.env.GITHUB_TOKEN } : {}) }, signal: AbortSignal.timeout(6000) });
+        const gj = gh.ok ? await gh.json() : {};
+        const npm = await fetch('https://api.npmjs.org/downloads/point/last-month/%40reneturcios%2Fopensourceit', { signal: AbortSignal.timeout(6000) }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+        globalThis.__repoStats = { at: Date.now(), data: { stars: gj.stargazers_count ?? null, forks: gj.forks_count ?? null, watchers: gj.subscribers_count ?? null, openIssues: gj.open_issues_count ?? null, npmDownloadsLastMonth: npm.downloads ?? null, fetchedAt: new Date().toISOString() } };
+      } catch { globalThis.__repoStats = globalThis.__repoStats || { at: Date.now(), data: { unavailable: true } }; }
+    }
+    return send(res, 200, globalThis.__repoStats.data);
+  }
+  // README badge — the distribution loop: repos carry this shield, readers click through.
+  const badgeMatch = path.match(/^\/badge\/([\w.-]+)\/([\w.-]+)\.svg$/);
+  if (badgeMatch && req.method === 'GET') {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="168" height="20" role="img" aria-label="opensourceit: discuss"><title>Discuss on Opensourceit</title><rect width="168" height="20" rx="3" fill="#24292f"/><rect x="96" width="72" height="20" fill="#ff7a1a"/><rect x="96" width="4" height="20" fill="#ff7a1a"/><g fill="#fff" font-family="Verdana,Geneva,sans-serif" font-size="11"><text x="8" y="14">opensourceit</text><text x="106" y="14">discuss</text></g><circle cx="88" cy="10" r="4" fill="#ff7a1a"/></svg>`;
+    res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=300' });
+    return res.end(svg);
+  }
+  if (path === '/changelog' && req.method === 'GET') {
+    let mdText = '';
+    try { mdText = readFileSync(join(__dir, 'CHANGELOG.md'), 'utf8'); } catch {}
+    const escHtml = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const html = escHtml(mdText)
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>').replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/\n{2,}/g, '<br><br>');
+    return send(res, 200, `<!doctype html><html><head><meta charset="utf-8"><title>Opensourceit — Changelog</title></head><body style="font-family:system-ui;max-width:760px;margin:40px auto;padding:0 16px;line-height:1.65"><p><a href="/">← Opensourceit</a></p>${html}</body></html>`, 'text/html');
   }
   if (path === '/api/activity' && req.method === 'GET') {
     const db = loadDB(); const events = [];

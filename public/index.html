@@ -32,6 +32,8 @@
     <div class="card charter-card"><b>Moderation rule</b><p>Remove conduct, never tooling. Spam / malware / fraud / harassment — out. “Used AI” — never a reason.</p><a href="/charter">Full charter</a> · <a href="/api/docs">API docs</a></div>
     <div class="card"><b>Build Disclosure</b><p><span class="badge human">● human</span> <span class="badge ai-assisted">● ai-assisted</span><br><span class="badge ai-built">● ai-built</span> <span class="badge agent">● agent</span></p><p class="muted">Required on every post. Visible. Never grounds for removal.</p></div>
     <div class="card"><b>🔥 Trending tags</b><div id="trending"></div></div>
+    <div class="card"><b>⚡ Live Wire</b><div id="wire"><p class="muted">Latest real activity…</p></div></div>
+    <div class="card"><b>📊 Real numbers</b><div id="repoStats"><p class="muted">From GitHub + npm, live…</p></div><p class="muted" style="margin-top:6px"><a href="/changelog">Changelog</a> · <a href="/api/health">Status</a> · <a href="https://github.com/CloudCorpRecords/opensourceit/blob/main/LAUNCH-KIT.md">Launch kit</a></p></div>
   </aside>
   <section>
     <div id="commHeader"></div>
@@ -47,6 +49,7 @@
       <input id="cUrl" placeholder="Link (GitHub repo, demo…) — optional; repo cards auto-fill">
       <textarea id="cBody" rows="4" placeholder="What it does, how it's built, license, what's next… **bold**, *italic*, `code`, [links](https://…) supported"></textarea>
       <input id="cTags" placeholder="tags, comma, separated">
+      <input id="cWebsite" placeholder="website" autocomplete="off" tabindex="-1" style="position:absolute;left:-9999px;opacity:0;height:0" aria-hidden="true">
       <details><summary>📥 Import from GitHub instead — one click per repo</summary>
         <div class="row"><input id="ghOwner" placeholder="GitHub username (e.g. CloudCorpRecords)"><button id="ghLoad" class="ghost">Load my repos</button></div>
         <div id="ghRepos"></div>
