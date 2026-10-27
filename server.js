@@ -328,7 +328,7 @@ const server = createServer(async (req, res) => {
   if (path === '/api/stats' && req.method === 'GET') {
     const db = loadDB(); const ps = db.posts.filter(visible);
     const byDisclosure = {}; for (const p of ps) byDisclosure[p.disclosure] = (byDisclosure[p.disclosure] || 0) + 1;
-    return send(res, 200, { version: VERSION, communities: db.communities.length, posts: ps.length, comments: ps.reduce((a, p) => a + (p.comments || []).length, 0), membersSeed: db.communities.reduce((a, c) => a + (c.members || 0), 0), byDisclosure, aiShare: ps.length ? Math.round(100 * ps.filter(p => p.disclosure !== 'human').length / ps.length) : 0 });
+    return send(res, 200, { version: VERSION, communities: db.communities.length, posts: ps.length, comments: ps.reduce((a, p) => a + (p.comments || []).length, 0), members: db.communities.reduce((a, c) => a + (c.members || 0), 0), byDisclosure, aiShare: ps.length ? Math.round(100 * ps.filter(p => p.disclosure !== 'human').length / ps.length) : 0 });
   }
 
   // R5: reports + conduct-only moderation

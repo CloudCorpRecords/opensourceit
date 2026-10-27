@@ -25,7 +25,7 @@ test('health reports 0.2.0', async () => {
 test('profile: karma, counts, disclosure mix', async () => {
   const { body } = await j('/api/users/rene');
   assert.equal(body.handle, 'rene');
-  assert.ok(body.karma > 500, 'seed karma');
+  assert.equal(body.karma, 17, 'honest karma: 15 posts + 2 comments, score 1 each (v0.4.0 reset)');
   assert.ok(body.postCount >= 3);
   assert.ok(body.disclosures['ai-built'] >= 1);
 });

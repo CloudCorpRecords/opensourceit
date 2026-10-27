@@ -41,7 +41,7 @@ function renderCommHeader(){
   el.querySelectorAll('[data-user]').forEach(a=>a.onclick=e=>{e.preventDefault();showProfile(a.dataset.user);});
 }
 async function loadStats(){try{const s=await api('/api/stats');
-  $('#stats').innerHTML=`${s.communities} communities · ${s.posts} posts · ${s.comments} comments<br>${s.membersSeed.toLocaleString()} members (seed)<br><b>${s.aiShare}%</b> of posts disclose AI involvement — and 0 were banned for it.<br><span class="muted">v${s.version}</span>`;}catch{$('#stats').textContent='—';}}
+  $('#stats').innerHTML=`${s.communities} communities · ${s.posts} posts · ${s.comments} comments<br>${s.members.toLocaleString()} members — real counts, day one<br><b>${s.aiShare}%</b> of posts disclose AI involvement — and 0 were banned for it.<br><span class="muted">v${s.version}</span>`;}catch{$('#stats').textContent='—';}}
 async function loadTrending(){try{const t=await api('/api/trending');
   $('#trending').innerHTML=t.length?t.map(x=>`<span class="tag click" data-tag="${esc(x.tag)}">#${esc(x.tag)} · ${x.heat}</span>`).join(' '):'<span class="muted">—</span>';
   document.querySelectorAll('[data-tag]').forEach(el=>el.onclick=()=>{community=null;$('#q').value='';loadCommunities();loadPosts({tag:el.dataset.tag});});}catch{}}
