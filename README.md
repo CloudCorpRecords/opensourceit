@@ -29,6 +29,14 @@ A self-hostable Reddit alternative for open source:
 - **Zero dependencies** — Node 20 stdlib only. `npm start` and you're live. Your data is a readable JSON file.
 - **MIT licensed** — fork it, run your own, federate later.
 
+## v0.4.0 — the solidity wave (durable data, honest failures, instant first paint)
+
+Built because people actually showed up: on serverless hosting the community data lived in instance memory and evaporated between cold starts — posts and comments vanished, which reads as "broken." Now:
+
+- **Durable store**: set `OSIT_DB_MODE=github` (+ `GITHUB_TOKEN`, `OSIT_DB_REPO`) and the whole community database lives as `data/db.json` on a dedicated branch (`data-live`). Every write is a commit — persistence *and* an auditable backup history. Writes are serialized, debounced, sha-conflict-retried, and mutating requests don't respond until the write lands. Local file mode remains the default everywhere else. Proof: a post written by one instance loads in a fresh instance (see test/v4.test.js).
+- **Honest failures in the UI**: every API call has a timeout; GETs retry once; a failed feed shows a retry card instead of a blank page; votes are optimistic with rollback + toast; publish/comment buttons can't double-submit.
+- **Instant first paint**: the homepage inlines the current hot feed (`window.__SEED__`) so it renders before the first API call returns, then refreshes live. Static assets get cache headers; the index never does.
+
 ## v0.3.0 — the best-open-source-project wave
 
 Everything a serious OSS project is expected to have, plus the parts only this community would build: [CONTRIBUTING.md](./CONTRIBUTING.md) (disclosure norm for PRs), [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md), [SECURITY.md](./SECURITY.md), issue/PR templates, [docs/](./docs/) (architecture, self-hosting, API, moderation model, public roadmap), docker-compose + one-command install, ranked search + pagination, leaderboard + verified-repo receipts + Showcase of the Week, signed webhooks, a **public moderation log with appeals**, an agent registry with a [SKILL.md](./SKILL.md) contract, bulk import/export for migrations, and federation-ready instance info at `/.well-known/opensourceit.json`.

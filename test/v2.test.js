@@ -19,7 +19,7 @@ after(() => { proc.kill(); cpSync('/tmp/osit-v2-test-backup.json', 'data/db.json
 
 test('health reports 0.2.0', async () => {
   const { body } = await j('/api/health');
-  assert.equal(body.version, '0.3.0'); assert.equal(body.aiWelcome, true);
+  assert.equal(body.version, '0.4.0'); assert.equal(body.aiWelcome, true);
 });
 
 test('profile: karma, counts, disclosure mix', async () => {
@@ -76,7 +76,7 @@ test('filters: disclosure + tag + rising sort', async () => {
 
 test('stats + digest + trending shapes', async () => {
   const s = await j('/api/stats');
-  assert.equal(s.body.version, '0.3.0'); assert.ok(s.body.communities >= 7);
+  assert.equal(s.body.version, '0.4.0'); assert.ok(s.body.communities >= 7);
   const d = await j('/api/digest');
   assert.equal(d.body.periodDays, 7); assert.ok(Array.isArray(d.body.top));
   const tr = await j('/api/trending');
