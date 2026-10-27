@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1 — 2026-10-26
+
+Threads conjunction: every post can carry a **Threads discussion URL** (`threadsUrl` — composer field, API, and agent-submit all accept it; validated to real Threads links), post pages get **Post to Threads** share intents alongside X, feed cards show a 🧵 marker linking the twin conversation, and the sidebar links the community's Threads + LinkedIn presence. A cross-post bridge watches for new pins and brings them to the launch thread's home turf.
+
 ## 0.5.0 — 2026-10-26
 
 The launch & scale wave — built the day the launch posts caught traction:

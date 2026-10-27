@@ -56,7 +56,7 @@ async function body(req) {
   try { return JSON.parse(Buffer.concat(chunks).toString() || '{}'); } catch { return {}; }
 }
 function clean(s, max = 5000) { return String(s ?? '').trim().slice(0, max); }
-const VERSION = '0.5.0';
+const VERSION = '0.5.1';
 const CHARTER_VERSION = '1.0';
 const CONDUCT_REASONS = ['spam', 'malware', 'harassment', 'license-fraud', 'other-conduct'];
 function rising(p) { const ageH = Math.max((Date.now() - new Date(p.createdAt).getTime()) / 3.6e6, 0.1); return score(p) / ageH; }
@@ -70,8 +70,13 @@ function spamCheck(db, { title, bodyText, author }) {
 }
 // v0.5.0: borderline content is POSTED but auto-flagged into the public mod queue
 // (conduct-consistent: spam is a conduct reason; the flag and its basis are visible).
-function autoFlag(target, text) {
-  const links = (String(text || '').match(/https?:\/\//g) || []).length;
+// v0.5.1: a post can carry its Threads discussion URL — the two communities are
+// usable in conjunction: post here, discuss there, both linked both ways.
+function cleanThreadsUrl(u) {
+  const s = String(u || '').trim();
+  return /^https:\/\/(www\.)?threads\.(net|com)\/\S+$/.test(s) ? s.slice(0, 300) : '';
+}
+function autoFlag(target, text) {  const links = (String(text || '').match(/https?:\/\//g) || []).length;
   const repeat = /(.)\1{14,}/.test(String(text || ''));
   if (links > 5 || repeat) {
     target.reports = target.reports || [];
@@ -200,6 +205,7 @@ const server = createServer(async (req, res) => {
     if (b.title) p.title = clean(b.title, 300);
     if (b.body !== undefined) p.body = clean(b.body);
     if (b.url !== undefined) p.url = clean(b.url, 2000);
+    if (b.threadsUrl !== undefined) p.threadsUrl = cleanThreadsUrl(b.threadsUrl);
     if (Array.isArray(b.tags)) p.tags = b.tags.map(t => clean(t, 30)).slice(0, 5);
     p.editedAt = new Date().toISOString(); saveDB(db);
     return send(res, 200, p);
@@ -216,7 +222,7 @@ const server = createServer(async (req, res) => {
     if (!db.communities.find(c => c.id === community)) return send(res, 400, { error: 'unknown community' });
     const spam = spamCheck(db, { title, bodyText: b.body, author });
     if (spam) return send(res, 400, { error: 'spam guard: ' + spam });
-    const post = { id: 'p_' + randomUUID().slice(0, 8), title, body: clean(b.body), url: clean(b.url, 2000), community, author, disclosure, type: ['discussion', 'link', 'showcase'].includes(b.type) ? b.type : (b.url ? 'link' : 'discussion'), tags: Array.isArray(b.tags) ? b.tags.map(t => clean(t, 30)).slice(0, 5) : [], score: 1, comments: [], reports: [], createdAt: new Date().toISOString() };
+    const post = { id: 'p_' + randomUUID().slice(0, 8), title, body: clean(b.body), url: clean(b.url, 2000), threadsUrl: cleanThreadsUrl(b.threadsUrl), community, author, disclosure, type: ['discussion', 'link', 'showcase'].includes(b.type) ? b.type : (b.url ? 'link' : 'discussion'), tags: Array.isArray(b.tags) ? b.tags.map(t => clean(t, 30)).slice(0, 5) : [], score: 1, comments: [], reports: [], createdAt: new Date().toISOString() };
     const meta = await repoMetaFor(post.url); if (meta) post.repoMeta = meta;
     autoFlag(post, title + ' ' + (b.body || ''));
     db.posts.unshift(post); saveDB(db); fireWebhook(db, 'post.created', post);
@@ -269,7 +275,7 @@ const server = createServer(async (req, res) => {
       if (!db.communities.find(c => c.id === community)) return send(res, 400, { error: 'unknown community: ' + community });
       const postUrl = clean(b.url, 2000);
       if (postUrl) { const existing = db.posts.find(p => p.url === postUrl); if (existing) return send(res, 200, { ...existing, deduped: true }); }
-      const post = { id: 'p_' + randomUUID().slice(0, 8), title, body: clean(b.body), url: postUrl, community, author, disclosure: DISCLOSURES.includes(b.disclosure) ? b.disclosure : 'ai-assisted', tags: Array.isArray(b.tags) ? b.tags.map(t => clean(t, 30)).slice(0, 5) : [], score: 1, comments: [], createdAt: new Date().toISOString() };
+      const post = { id: 'p_' + randomUUID().slice(0, 8), title, body: clean(b.body), url: postUrl, threadsUrl: cleanThreadsUrl(b.threadsUrl), community, author, disclosure: DISCLOSURES.includes(b.disclosure) ? b.disclosure : 'ai-assisted', tags: Array.isArray(b.tags) ? b.tags.map(t => clean(t, 30)).slice(0, 5) : [], score: 1, comments: [], createdAt: new Date().toISOString() };
       db.posts.unshift(post); saveDB(db); fireWebhook(db, 'post.created', post);
       return send(res, 201, post);
     } catch (e) { return send(res, 500, { error: String(e.message || e) }); }
