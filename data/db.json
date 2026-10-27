@@ -59,6 +59,21 @@
   ],
   "posts": [
     {
+      "id": "p_55d2def1",
+      "title": "Why would you leave a public forum open to the internet with NO restrictions",
+      "body": "Recipe for disaster.",
+      "url": "",
+      "community": "opensource",
+      "author": "rene",
+      "disclosure": "ai-assisted",
+      "type": "showcase",
+      "tags": [],
+      "score": 1,
+      "comments": [],
+      "reports": [],
+      "createdAt": "2026-10-27T01:31:03.750Z"
+    },
+    {
       "id": "p_4532a205",
       "title": "v0.4.0: this community now remembers",
       "body": "Until today, posts on the live site lived in serverless memory and vanished on cold starts. As of v0.4.0 the database is a file on the data-live branch — every post is a git commit. This post is the proof: it exists in the branch, not in memory. Scores start at 1 now, member counts are real, and the seed stats are honest day-one numbers.",
