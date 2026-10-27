@@ -8,6 +8,7 @@ import { extname, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID, createHmac } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
+import { remoteConfig, GitStore } from './src/remotedb.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 4173;
@@ -16,6 +17,16 @@ const PUBLIC = join(__dir, 'public');
 const DISCLOSURES = ['human', 'ai-assisted', 'ai-built', 'agent'];
 
 let CACHE = null;
+let STORE = null; let LAST_SAVE = null; let DB_READY = null;
+async function ensureDB() {
+  if (!DB_READY) DB_READY = (async () => {
+    const seed = JSON.parse(readFileSync(DB_PATH, 'utf8'));
+    const cfg = remoteConfig();
+    if (cfg) { STORE = new GitStore(cfg, seed); CACHE = await STORE.load(); }
+    else CACHE = seed;
+  })();
+  return DB_READY;
+}
 function loadDB() {
   if (CACHE) return CACHE;
   CACHE = JSON.parse(readFileSync(DB_PATH, 'utf8'));
@@ -26,6 +37,8 @@ function saveDB(db) {
   // Serverless hosts (Vercel) have a read-only FS: keep the in-memory copy
   // authoritative there and persist to disk only where we can.
   try { writeFileSync(DB_PATH, JSON.stringify(db, null, 2)); } catch {}
+  // Durable mode: write through to the git-backed store (serialized + debounced).
+  if (STORE) LAST_SAVE = STORE.save(db);
 }
 function score(post) { return post.score || 0; }
 function hot(p) {
@@ -43,7 +56,7 @@ async function body(req) {
   try { return JSON.parse(Buffer.concat(chunks).toString() || '{}'); } catch { return {}; }
 }
 function clean(s, max = 5000) { return String(s ?? '').trim().slice(0, max); }
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 const CHARTER_VERSION = '1.0';
 const CONDUCT_REASONS = ['spam', 'malware', 'harassment', 'license-fraud', 'other-conduct'];
 function rising(p) { const ageH = Math.max((Date.now() - new Date(p.createdAt).getTime()) / 3.6e6, 0.1); return score(p) / ageH; }
@@ -84,13 +97,19 @@ async function repoMetaFor(urlStr) {
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
 const server = createServer(async (req, res) => {
+  const MUTATING = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
+  if (MUTATING) { // durable writes land BEFORE we answer, so a frozen serverless
+    const end = res.end.bind(res); // instance can never acknowledge a write it lost
+    res.end = (...a) => { const done = () => end(...a); if (LAST_SAVE) Promise.resolve(LAST_SAVE).then(done, done); else done(); };
+  }
+  try { await ensureDB(); } catch { /* ensureDB degrades to seed internally */ }
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const path = url.pathname;
 
   if (req.method === 'OPTIONS') return send(res, 204, '');
 
   // ---- API ----
-  if (path === '/api/health') return send(res, 200, { ok: true, name: 'opensourceit', version: VERSION, aiWelcome: true });
+  if (path === '/api/health') { const db = loadDB(); return send(res, 200, { ok: true, name: 'opensourceit', version: VERSION, aiWelcome: true, posts: db.posts.length, communities: db.communities.length, storage: STORE ? STORE.status() : { mode: 'file' } }); }
 
   if (path === '/api/communities' && req.method === 'GET') {
     const db = loadDB();
@@ -523,13 +542,25 @@ const server = createServer(async (req, res) => {
   if (path === '/charter') file = '/charter.html';
   const full = join(PUBLIC, file);
   if (!existsSync(full)) return send(res, 404, 'Not found', 'text/plain');
-  const content = await readFile(full);
+  let content = await readFile(full);
+  if (file === '/index.html') {
+    // SSR-lite: inline the current hot feed so first paint is instant even on a
+    // cold serverless instance; app.js renders from it, then refreshes live.
+    try {
+      const db = loadDB();
+      const pub = p => ({ ...p, comments: (p.comments || []).filter(c => !c.removed) });
+      const seed = { posts: [...db.posts].sort((a, b) => hot(b) - hot(a)).slice(0, 20).map(pub), communities: db.communities.map(c => ({ ...c, postCount: db.posts.filter(p => p.community === c.id).length })) };
+      const inject = `<script>window.__SEED__=${JSON.stringify(seed).replace(/</g, '\\u003c')}</script>`;
+      content = Buffer.from(content.toString('utf8').replace('<script src="/app.js">', inject + '<script src="/app.js">'), 'utf8');
+    } catch {}
+  }
+  const cacheCtl = file === '/index.html' ? 'no-cache' : 'public, max-age=300';
   const acceptGzip = (req.headers['accept-encoding'] || '').includes('gzip');
   if (acceptGzip && content.length > 1024) {
-    res.writeHead(200, { 'Content-Type': MIME[extname(full)] || 'text/plain', 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding' });
+    res.writeHead(200, { 'Content-Type': MIME[extname(full)] || 'text/plain', 'Content-Encoding': 'gzip', 'Vary': 'Accept-Encoding', 'Cache-Control': cacheCtl });
     return res.end(gzipSync(content));
   }
-  res.writeHead(200, { 'Content-Type': MIME[extname(full)] || 'text/plain' });
+  res.writeHead(200, { 'Content-Type': MIME[extname(full)] || 'text/plain', 'Cache-Control': cacheCtl });
   res.end(content);
 });
 

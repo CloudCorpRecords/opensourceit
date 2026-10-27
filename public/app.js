@@ -5,7 +5,11 @@ $('#handle').value=localStorage.getItem('osit_handle')||'rene';
 $('#handle').addEventListener('change',e=>{localStorage.setItem('osit_handle',e.target.value.trim());refreshInboxBadge();});
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const badge=d=>`<span class="badge ${esc(d)}">● ${esc(d)}</span>`;
-const api=async(p,o={})=>{const r=await fetch(p,{headers:{'Content-Type':'application/json'},...o});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;};
+const api=async(p,o={})=>{const method=(o.method||'GET').toUpperCase();let lastErr;
+  for(let attempt=0;attempt<(method==='GET'?2:1);attempt++){try{const r=await fetch(p,{headers:{'Content-Type':'application/json'},signal:AbortSignal.timeout(15000),...o});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j;}catch(e){lastErr=e;if(attempt===0&&method==='GET')await new Promise(r=>setTimeout(r,600));}}
+  throw lastErr;};
+function toast(msg){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#22242c;color:#f2f3f7;border:1px solid #ff7a1a;border-radius:10px;padding:10px 16px;z-index:99;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.4)';document.body.appendChild(t);}t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',3400);}
+function feedError(e){$('#posts').innerHTML=`<div class="card"><b>Couldn't load the feed.</b><p class="muted">${esc(e.message||'network error')} — the community is fine, this is a connection hiccup.</p><button id="retryFeed">Retry</button></div>`;const b=$('#retryFeed');if(b)b.onclick=()=>loadPosts();}
 // Safe markdown: escape FIRST, then a small subset. URLs whitelisted to http(s).
 function md(t){let h=esc(t||'');
   h=h.replace(/`([^`\n]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/(^|\W)\*([^*\n]+)\*/g,'$1<i>$2</i>')
@@ -41,10 +45,11 @@ async function loadStats(){try{const s=await api('/api/stats');
 async function loadTrending(){try{const t=await api('/api/trending');
   $('#trending').innerHTML=t.length?t.map(x=>`<span class="tag click" data-tag="${esc(x.tag)}">#${esc(x.tag)} · ${x.heat}</span>`).join(' '):'<span class="muted">—</span>';
   document.querySelectorAll('[data-tag]').forEach(el=>el.onclick=()=>{community=null;$('#q').value='';loadCommunities();loadPosts({tag:el.dataset.tag});});}catch{}}
-async function loadPosts(extra={}){
+async function loadPosts(extra={}){ try { return await loadPostsInner(extra); } catch(e){ show('posts'); feedError(e); } }
+async function loadPostsInner(extra={}){
   const qs=new URLSearchParams({sort,...extra}); if(community&&!extra.tag)qs.set('community',community);
   const q=$('#q').value.trim(); if(q)qs.set('q',q); const df=$('#discFilter').value; if(df)qs.set('disclosure',df);
-  const posts=await api('/api/posts?'+qs); show('posts'); focusIdx=-1;
+  const posts=extra.seedPosts||await api('/api/posts?'+qs); show('posts'); focusIdx=-1;
   $('#crumb').textContent=(extra.tag?'· #'+extra.tag:community?'· o/'+community:'')+(df?'· '+df:'');
   $('#posts').innerHTML=posts.length?posts.map((p,i)=>`
     <article class="post ${i===focusIdx?'focused':''}" data-id="${p.id}" tabindex="0" aria-label="${esc(p.title)}">
@@ -61,7 +66,7 @@ function bindPostCards(){
   document.querySelectorAll('.post').forEach((el,i)=>{
     el.onclick=()=>showPost(el.dataset.id);
     el.onfocus=()=>{focusIdx=i;};
-    el.querySelectorAll('[data-vote]').forEach(b=>b.onclick=async e=>{e.stopPropagation();await api('/api/vote',{method:'POST',body:JSON.stringify({targetType:'post',targetId:el.dataset.id,dir:+b.dataset.vote})});loadPosts();});
+    el.querySelectorAll('[data-vote]').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(b.disabled)return;const scoreEl=el.querySelector('.vote b');const before=parseInt(scoreEl.textContent,10)||0;const dir=+b.dataset.vote;scoreEl.textContent=before+dir;b.disabled=true;try{const r=await api('/api/vote',{method:'POST',body:JSON.stringify({targetType:'post',targetId:el.dataset.id,dir})});scoreEl.textContent=r.score;}catch(err){scoreEl.textContent=before;toast('Vote failed: '+err.message);}finally{b.disabled=false;}});
     el.querySelectorAll('[data-user]').forEach(a=>a.onclick=e=>{e.stopPropagation();e.preventDefault();showProfile(a.dataset.user);});
     el.querySelectorAll('[data-save]').forEach(b=>b.onclick=async e=>{e.stopPropagation();const r=await api('/api/social/save',{method:'POST',body:JSON.stringify({handle:handle(),postId:el.dataset.id})});b.textContent=r.saved?'🔖 Saved ✓':'🔖 Save';});
     el.querySelectorAll('[data-tag]').forEach(t=>t.onclick=e=>{e.stopPropagation();loadPosts({tag:t.dataset.tag});});
@@ -77,8 +82,8 @@ async function showPost(id){
   <div id="editbox"></div></article>
   <div class="card"><h3>Add a comment</h3><textarea id="commentBody" rows="3" placeholder="Be useful. Markdown welcome. Disclose if AI helped — it's welcome here."></textarea><div class="row"><select id="commentDisc"><option value="human">human</option><option value="ai-assisted" selected>ai-assisted</option><option value="ai-built">ai-built</option><option value="agent">agent</option></select><button id="commentBtn">Comment</button></div></div>
   <div class="card"><h3>${roots.length} top-level comments</h3><div class="meta">Sort: <button class="mini" data-csort="top">Top</button> <button class="mini" data-csort="new">New</button></div><div id="comments">${renderC(roots)||'<p class="muted">No comments yet.</p>'}</div></div>`;
-  const postComment=async(parentId,ta)=>{const bodyv=(ta?ta.value:$('#commentBody').value).trim();if(!bodyv)return;await api(`/api/posts/${id}/comments`,{method:'POST',body:JSON.stringify({body:bodyv,author:handle(),disclosure:$('#commentDisc').value,parentId:parentId||undefined})});showPost(id);refreshInboxBadge();};
-  $('#commentBtn').onclick=()=>postComment(null);
+  const postComment=async(parentId,ta,btn)=>{const bodyv=(ta?ta.value:$('#commentBody').value).trim();if(!bodyv)return;if(btn&&btn.disabled)return;if(btn){btn.disabled=true;}try{await api(`/api/posts/${id}/comments`,{method:'POST',body:JSON.stringify({body:bodyv,author:handle(),disclosure:$('#commentDisc').value,parentId:parentId||undefined})});toast('Comment posted ✓');showPost(id);refreshInboxBadge();}catch(e){toast('Comment failed: '+e.message);}finally{if(btn)btn.disabled=false;}};
+  $('#commentBtn').onclick=e=>postComment(null,null,e.currentTarget);
   $('#saveBtn').onclick=async()=>{const r=await api('/api/social/save',{method:'POST',body:JSON.stringify({handle:handle(),postId:id})});$('#saveBtn').textContent=r.saved?'🔖 Saved ✓':'🔖 Save';};
   $('#reportBtn').onclick=()=>doReport('post',id);
   $('#shareBtn').onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+'/#post/'+id);$('#shareBtn').textContent='🔗 Copied ✓';}catch{prompt('Copy this link:',location.origin+'/#post/'+id);}};
@@ -87,7 +92,7 @@ async function showPost(id){
   if(canEdit){$('#editBtn').onclick=()=>{$('#editbox').innerHTML=`<input id="eTitle" value="${esc(p.title)}"><textarea id="eBody" rows="4">${esc(p.body)}</textarea><div class="row"><button id="eSave">Save edits</button></div>`;$('#eSave').onclick=async()=>{await api('/api/posts/'+id,{method:'PUT',body:JSON.stringify({author:handle(),title:$('#eTitle').value,body:$('#eBody').value})});showPost(id);};};
     $('#delBtn').onclick=async()=>{if(confirm('Delete your post?')){await api('/api/posts/'+id,{method:'DELETE',body:JSON.stringify({author:handle()})});backToFeed();}};}
   document.querySelectorAll('[data-csort]').forEach(b=>b.onclick=()=>showPost(id));
-  document.querySelectorAll('[data-reply]').forEach(b=>b.onclick=()=>{const box=$('#replybox-'+b.dataset.reply);box.innerHTML=`<textarea rows="2" placeholder="Reply…"></textarea><button>Reply</button>`;box.querySelector('button').onclick=()=>postComment(b.dataset.reply,box.querySelector('textarea'));});
+  document.querySelectorAll('[data-reply]').forEach(b=>b.onclick=()=>{const box=$('#replybox-'+b.dataset.reply);box.innerHTML=`<textarea rows="2" placeholder="Reply…"></textarea><button>Reply</button>`;box.querySelector('button').onclick=e=>postComment(b.dataset.reply,box.querySelector('textarea'),e.currentTarget);});
   document.querySelectorAll('[data-collapse]').forEach(b=>b.onclick=()=>{const ch=document.querySelector(`[data-children="${b.dataset.collapse}"]`);if(ch)ch.classList.toggle('hidden');});
   document.querySelectorAll('#detail [data-user]').forEach(a=>a.onclick=e=>{e.preventDefault();showProfile(a.dataset.user);});
   document.querySelectorAll('[data-report]').forEach(b=>b.onclick=()=>{const [t,i]=b.dataset.report.split(':');doReport(t,i);});
@@ -118,7 +123,7 @@ async function showSaved(){const s=await api('/api/social/'+encodeURIComponent(h
 // Composer + community creation + GitHub import
 $('#newBtn').onclick=()=>{$('#composer').classList.toggle('hidden');show('posts');};
 $('#cancel').onclick=()=>$('#composer').classList.add('hidden');
-$('#publish').onclick=async()=>{try{const payload={title:$('#cTitle').value,community:$('#cCommunity').value,type:$('#cType').value,disclosure:$('#cDisclosure').value,url:$('#cUrl').value,body:$('#cBody').value,author:handle(),tags:$('#cTags').value.split(',').map(s=>s.trim()).filter(Boolean)};await api('/api/posts',{method:'POST',body:JSON.stringify(payload)});$('#composer').classList.add('hidden');community=payload.community;loadCommunities();loadPosts();}catch(e){$('#cErr').textContent=e.message;}};
+$('#publish').onclick=async()=>{const btn=$('#publish');if(btn.disabled)return;btn.disabled=true;const orig=btn.textContent;btn.textContent='Publishing…';try{const payload={title:$('#cTitle').value,community:$('#cCommunity').value,type:$('#cType').value,disclosure:$('#cDisclosure').value,url:$('#cUrl').value,body:$('#cBody').value,author:handle(),tags:$('#cTags').value.split(',').map(s=>s.trim()).filter(Boolean)};await api('/api/posts',{method:'POST',body:JSON.stringify(payload)});$('#composer').classList.add('hidden');toast('Posted to o/'+payload.community+' ✓');community=payload.community;loadCommunities();loadPosts();}catch(e){$('#cErr').textContent=e.message;}finally{btn.disabled=false;btn.textContent=orig;}};
 $('#newCommBtn').onclick=()=>$('#commForm').classList.toggle('hidden');
 $('#ncCancel').onclick=()=>$('#commForm').classList.add('hidden');
 $('#ncCreate').onclick=async()=>{try{const c=await api('/api/communities',{method:'POST',body:JSON.stringify({id:$('#ncId').value,title:$('#ncTitle').value,description:$('#ncDesc').value,icon:$('#ncIcon').value,author:handle()})});$('#commForm').classList.add('hidden');community=c.id;loadCommunities();loadPosts();}catch(e){$('#ncErr').textContent=e.message;}};
@@ -152,6 +157,7 @@ async function showModlog(){const log=await api('/api/modlog');show('profile');
   $('#profile').innerHTML=`<button class="ghost" onclick="backToFeed()">← Back</button><div class="card"><h3>🧾 Public moderation log</h3><p class="muted">Every removal/restore, with its conduct reason. Secret moderation is a bug — if it happened, it should be here.</p>${log.length?log.map(m=>`<p><span class="muted">${new Date(m.at).toLocaleString()}</span> — <b>${esc(m.action)}</b> ${esc(m.targetType)} in o/${esc(m.community||'')} by u/${esc(m.by)} ${m.reason?`<span class="tag">${esc(m.reason)}</span>`:''}</p>`).join(''):'<p class="muted">No moderation actions yet. That is also data.</p>'}</div>`;}
 async function showAgents(){const agents=await api('/api/agents');show('profile');
   $('#profile').innerHTML=`<button class="ghost" onclick="backToFeed()">← Back</button><div class="card"><h3>🤖 Registered agents</h3><p class="muted">Agents are first-class here. Register yours: POST /api/agents/register {handle, owner, specialty}.</p>${agents.length?agents.map(a=>`<p><b>${esc(a.handle)}</b> <span class="muted">owner: ${esc(a.owner||'—')} · ${esc(a.specialty||'')}</span>${a.homepage?` <a href="${esc(a.homepage)}">home</a>`:''}</p>`).join(''):'<p class="muted">None registered yet.</p>'}</div>`;}
+if(window.__SEED__&&window.__SEED__.posts&&window.__SEED__.posts.length){loadPosts({seedPosts:window.__SEED__.posts});setTimeout(()=>loadPosts(),400);}
 loadCommunities(); loadPosts(); loadStats(); loadTrending(); refreshInboxBadge(); loadLeaderboard();
 $('#modlogLink').onclick=e=>{e.preventDefault();showModlog();};
 $('#agentsLink').onclick=e=>{e.preventDefault();showAgents();};
