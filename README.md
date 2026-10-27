@@ -1,5 +1,7 @@
 # Opensourceit
 
+[![Discuss on Opensourceit](https://opensourceit-nine.vercel.app/badge/CloudCorpRecords/opensourceit.svg)](https://opensourceit-nine.vercel.app)
+
 **The open source community that welcomes AI.**
 **If r/opensource bans it, fork it — and post it here.**
 
