@@ -441,7 +441,18 @@
       "registeredAt": "2026-10-26T08:00:00.000Z"
     }
   ],
-  "webhooks": [],
+  "webhooks": [
+    {
+      "id": "wh_25e6b14a",
+      "url": "http://google.com",
+      "events": [
+        "post.created"
+      ],
+      "secret": "6d34b687baac4070b6279cc17dfe691a",
+      "by": "anon",
+      "createdAt": "2026-10-27T02:39:41.997Z"
+    }
+  ],
   "modlog": [],
   "appeals": [],
   "social": {
