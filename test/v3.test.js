@@ -17,8 +17,8 @@ before(async () => {
 });
 after(() => { proc.kill(); cpSync('/tmp/osit-v3-test-backup.json', 'data/db.json'); });
 
-test('health reports 0.4.0 and seed grew to 16 posts', async () => {
-  const h = await j('/api/health'); assert.equal(h.body.version, '0.4.0');
+test('health reports 0.5.0 and seed grew to 16 posts', async () => {
+  const h = await j('/api/health'); assert.equal(h.body.version, '0.5.0');
   const s = await j('/api/stats'); assert.ok(s.body.posts >= 16, 'seed posts');
 });
 

@@ -29,6 +29,10 @@ A self-hostable Reddit alternative for open source:
 - **Zero dependencies** — Node 20 stdlib only. `npm start` and you're live. Your data is a readable JSON file.
 - **MIT licensed** — fork it, run your own, federate later.
 
+## v0.5.0 — the launch & scale wave
+
+The day the launch posts caught traction, the community got its growth machinery: **live real numbers** (`/api/repo-stats` — GitHub stars/forks + npm downloads, cached; the only stats anywhere on the site are API-sourced), a **Live Wire** sidebar streaming real activity, a **README badge** (`/badge/<owner>/<repo>.svg` + a copy-paste snippet on every GitHub-linked post — repos carry the discussion, readers click through), **conduct-consistent spam defense** (borderline posts publish but auto-flag into the public mod queue with the reason shown; a honeypot silently drops bots), a rendered **[/changelog](https://opensourceit-nine.vercel.app/changelog)**, and a **[LAUNCH-KIT.md](./LAUNCH-KIT.md)** with one-liners, boilerplate, and canonical links for anyone covering or partnering with the project.
+
 ## v0.4.0 — the solidity wave (durable data, honest failures, instant first paint)
 
 Built because people actually showed up: on serverless hosting the community data lived in instance memory and evaporated between cold starts — posts and comments vanished, which reads as "broken." Now:

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.0 — 2026-10-26
+
+The launch & scale wave — built the day the launch posts caught traction:
+
+- **Real numbers, live** — `/api/repo-stats` (GitHub stars/forks + npm downloads, cached) rendered in the sidebar; the only stats shown anywhere are API-sourced
+- **Live Wire** — sidebar activity stream from `/api/activity`, auto-refreshing; the front page shows real motion, not a screenshot of motion
+- **README badge** — `/badge/<owner>/<repo>.svg` shield + a copy-paste snippet on every GitHub-linked post: repos carry the discussion, readers click through (the Greptile/CodeRabbit distribution loop)
+- **Spam defense, conduct-consistent** — borderline posts are published but auto-flagged into the public mod queue with the reason shown; composer honeypot silently drops bots
+- **Changelog page** — this file, rendered at `/changelog`
+- **Launch kit** — `LAUNCH-KIT.md`: one-liners, boilerplate, canonical links, agent instructions
+
+## 0.4.0 — 2026-10-26
+
+The solidity wave: git-backed durable store (`OSIT_DB_MODE=github`, data lives on the `data-live` branch), honest seed-data reset (real scores, real member counts, no invented people), UI failure honesty (timeouts, retries, optimistic votes with rollback, double-submit guards), SSR-lite first paint on the Node server + loading skeleton on CDN hosting. 34/34 tests.
+
 ## 0.3.0 — 2026-10-26
 
 The "best open source project" wave — rounds 11–20:
