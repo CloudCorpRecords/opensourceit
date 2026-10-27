@@ -35,7 +35,7 @@ Built because people actually showed up: on serverless hosting the community dat
 
 - **Durable store**: set `OSIT_DB_MODE=github` (+ `GITHUB_TOKEN`, `OSIT_DB_REPO`) and the whole community database lives as `data/db.json` on a dedicated branch (`data-live`). Every write is a commit — persistence *and* an auditable backup history. Writes are serialized, debounced, sha-conflict-retried, and mutating requests don't respond until the write lands. Local file mode remains the default everywhere else. Proof: a post written by one instance loads in a fresh instance (see test/v4.test.js).
 - **Honest failures in the UI**: every API call has a timeout; GETs retry once; a failed feed shows a retry card instead of a blank page; votes are optimistic with rollback + toast; publish/comment buttons can't double-submit.
-- **Instant first paint**: the homepage inlines the current hot feed (`window.__SEED__`) so it renders before the first API call returns, then refreshes live. Static assets get cache headers; the index never does.
+- **Instant first paint**: the homepage shell paints immediately (a skeleton on CDN hosting; the current hot feed inlined as `window.__SEED__` when self-hosted on the Node server), then the feed refreshes live. Static assets get cache headers; the index never does.
 
 ## v0.3.0 — the best-open-source-project wave
 
