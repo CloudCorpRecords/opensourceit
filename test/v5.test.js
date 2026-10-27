@@ -18,9 +18,9 @@ before(async () => {
 });
 after(() => { child?.kill('SIGKILL'); });
 
-test('health reports 0.5.0', async () => {
+test('health reports 0.5.1', async () => {
   const { body } = await j('/api/health');
-  assert.equal(body.version, '0.5.0');
+  assert.equal(body.version, '0.5.1');
 });
 
 test('badge endpoint serves an SVG shield for any repo', async () => {

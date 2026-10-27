@@ -94,7 +94,7 @@ test('GitStore: load degrades to seed when GitHub is unreachable (never 500s the
 // ---- Server integration ----
 test('health reports the storage mode', async () => {
   const h = await (await fetch(BASE + '/api/health')).json();
-  assert.equal(h.version, '0.5.0');
+  assert.equal(h.version, '0.5.1');
   assert.equal(h.storage.mode, 'file'); // no env in test → local file mode
 });
 
