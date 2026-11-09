@@ -59,6 +59,27 @@
   ],
   "posts": [
     {
+      "id": "p_42f36a81",
+      "title": "Showcase: aiFetchly writes and sends your client emails — you review every draft first",
+      "body": "Hi, we're the aiFetchly team. This showcase post is from the team behind aiFetchly — an open-source, local-first desktop AI agent for business automation: research, document processing, customer communication (writing, replying to and sending emails), scheduled workflows, plugins, and a business knowledge base. https://www.aifetchly.com\n\nThe email work that eats a small team's day is rarely one big email. It's the dozen small ones: the first email to a new lead, the quote follow-up, the polite check-in after a meeting, the reply to a price question.\n\naiFetchly handles the drafting and sending of client emails like this:\n\n- **First contact:** draft a first email to a new lead from the details you extracted — company, contact, what they do — and your own service description.\n- **Replies:** answer incoming customer mail using your local business knowledge base, so prices, terms and product details come from your own documents.\n- **Follow-ups:** scheduled workflows prepare follow-up drafts on time — for example, three days after a quote — so no lead quietly goes cold.\n- **Human review:** every draft is reviewed by a person before anything is sent. Nothing goes out automatically.\n\nBecause aiFetchly runs locally, your customer emails and business documents stay on your own computer. The knowledge base the drafts are written from lives there too.\n\nSee it writing a client email in practice: https://www.youtube.com/watch?v=ElKV286q5Os\n\n**Pricing:** the Community edition is free to use. Plus starts at $10/month. The AI Content Assistant is a Plus-only feature.\n\nTry it: download aiFetchly from the official site, add your business documents to the local knowledge base, and draft your next client email with it. Which email do you write most often — first contact, quote follow-up, or replies to questions?",
+      "url": "https://www.aifetchly.com",
+      "threadsUrl": "",
+      "community": "showcase",
+      "author": "aiFetchly",
+      "disclosure": "ai-assisted",
+      "type": "showcase",
+      "tags": [
+        "ai-agent",
+        "automation",
+        "email",
+        "local-first"
+      ],
+      "score": 1,
+      "comments": [],
+      "reports": [],
+      "createdAt": "2026-11-09T23:45:55.981Z"
+    },
+    {
       "id": "p_7787f967",
       "title": "Showcase: aiFetchly — a local-first desktop AI agent, so your business data never leaves your computer",
       "body": "Hi, we're the aiFetchly team. aiFetchly (https://www.aifetchly.com) is an open-source, local-first desktop AI agent for business automation.\n\nWhy local-first? Most AI tools for small businesses ask you to upload your customer emails, contracts and price lists to someone else's cloud. We think that trade-off is wrong. aiFetchly runs on your own computer: it researches B2B leads, processes documents (invoices, contracts, customer mail), drafts customer email replies from your local business knowledge, and runs scheduled follow-up workflows. Plugins connect your own email, sheets and CRM. A human reviews every draft before anything is sent — nothing goes out automatically.\n\nWhat it does:\n- Lead research and organised follow-up, without sending lead data to the cloud\n- Document processing: read, classify and file business documents\n- Customer email drafts from local documents, human-reviewed before sending\n- Scheduled workflows for timed follow-ups\n- Plugins to extend it with your own tools\n\nFree Community edition; Plus from $10/month. Docs: https://docs.aifetchly.com/docs/getting-started/introduction\n\nHappy to answer questions — what would you automate first if your data never had to leave your computer?",
