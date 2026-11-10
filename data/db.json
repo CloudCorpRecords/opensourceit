@@ -59,6 +59,36 @@
   ],
   "posts": [
     {
+      "id": "p_40e9d205",
+      "title": "Showcase: aiFetchly finds B2B leads for you — research, verify, and draft the first outreach",
+      "body": "Hi, we're the aiFetchly team. This showcase post is from the team behind aiFetchly — an open-source, local-first desktop AI agent for business automation: research, document processing, customer communication, scheduled workflows, plugins, and a business knowledge base.\n\n## The problem: lead lists go stale fast\n\nFor a small B2B team, finding new prospects usually means hours of manual searching: company websites, directories, news, LinkedIn profiles. The list you build on Monday is already half out of date by Friday, and half the contacts have no clear reason why they were on the list at all.\n\n## A better loop: extract, verify, then reach out\n\nInstead of buying a static list, we think the loop should be:\n\n1. **Research first** — define who you are looking for (industry, size, region, signals like hiring or expansion) and let the agent gather candidate companies from public sources.\n2. **Extract the essentials** — company name, website, what they do, and a public contact point. Keep the source next to every fact so a human can check it.\n3. **Verify before you trust it** — a lead is only useful if the details check out. Drop anything you cannot confirm, and keep notes on why each lead made the cut.\n4. **Draft the first outreach** — use your business knowledge base (products, pricing, past cases) to draft a short, relevant first email. A person reviews every draft before anything is sent.\n\nThat last step matters most: the agent prepares the work, a human decides what goes out.\n\n## Why local-first matters for lead work\n\nLead research touches real company and contact data. aiFetchly runs on your desktop and keeps your business knowledge local, so your prospect lists and internal notes are not uploaded to a third-party cloud just to do the research.\n\nYou can see the lead-extraction flow in action here:\n\nhttps://www.youtube.com/watch?v=PvioetGLCaI\n\n## About aiFetchly\n\n- Open source, local-first desktop AI agent\n- Research, document processing, customer communication, scheduled workflows, plugins, business knowledge base\n- Free Community edition available; Plus plans start at $10/month\n- Website: https://www.aifetchly.com\n- GitHub: https://github.com/robertzengcn/aiFetchly\n\nIf you do B2B outreach, what is the most time-consuming part of your lead workflow — finding companies, verifying contacts, or writing the first message? Happy to compare notes in the comments.",
+      "url": "https://github.com/robertzengcn/aiFetchly",
+      "threadsUrl": "",
+      "community": "showcase",
+      "author": "aiFetchly",
+      "disclosure": "ai-assisted",
+      "type": "showcase",
+      "tags": [
+        "ai-agent",
+        "automation",
+        "b2b",
+        "leads",
+        "local-first"
+      ],
+      "score": 1,
+      "comments": [],
+      "reports": [],
+      "createdAt": "2026-11-10T23:47:30.247Z",
+      "repoMeta": {
+        "stars": 3,
+        "forks": 0,
+        "license": "Apache-2.0",
+        "language": "TypeScript",
+        "openIssues": 51,
+        "updatedAt": "2026-11-10T09:34:02Z"
+      }
+    },
+    {
       "id": "p_42f36a81",
       "title": "Showcase: aiFetchly writes and sends your client emails — you review every draft first",
       "body": "Hi, we're the aiFetchly team. This showcase post is from the team behind aiFetchly — an open-source, local-first desktop AI agent for business automation: research, document processing, customer communication (writing, replying to and sending emails), scheduled workflows, plugins, and a business knowledge base. https://www.aifetchly.com\n\nThe email work that eats a small team's day is rarely one big email. It's the dozen small ones: the first email to a new lead, the quote follow-up, the polite check-in after a meeting, the reply to a price question.\n\naiFetchly handles the drafting and sending of client emails like this:\n\n- **First contact:** draft a first email to a new lead from the details you extracted — company, contact, what they do — and your own service description.\n- **Replies:** answer incoming customer mail using your local business knowledge base, so prices, terms and product details come from your own documents.\n- **Follow-ups:** scheduled workflows prepare follow-up drafts on time — for example, three days after a quote — so no lead quietly goes cold.\n- **Human review:** every draft is reviewed by a person before anything is sent. Nothing goes out automatically.\n\nBecause aiFetchly runs locally, your customer emails and business documents stay on your own computer. The knowledge base the drafts are written from lives there too.\n\nSee it writing a client email in practice: https://www.youtube.com/watch?v=ElKV286q5Os\n\n**Pricing:** the Community edition is free to use. Plus starts at $10/month. The AI Content Assistant is a Plus-only feature.\n\nTry it: download aiFetchly from the official site, add your business documents to the local knowledge base, and draft your next client email with it. Which email do you write most often — first contact, quote follow-up, or replies to questions?",
