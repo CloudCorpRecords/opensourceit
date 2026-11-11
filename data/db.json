@@ -59,6 +59,27 @@
   ],
   "posts": [
     {
+      "id": "p_09bd8970",
+      "title": "Showcase: aiFetchly runs your repeat business tasks on a schedule — you stay in control",
+      "body": "Hi, we're the aiFetchly team. This showcase post is from the team behind aiFetchly — an open-source, local-first desktop AI agent for business automation: research, document processing, customer communication, scheduled workflows, plugins, and a business knowledge base.\n\n**The quiet problem: repeat tasks**\n\nMost small teams don't lose time to one big project. They lose it to the same small jobs every day: checking new enquiries, summarising the morning's emails, reminding a client, updating a tracker, preparing a weekly summary. Each takes minutes, together they take hours, and they are the easiest jobs to forget.\n\n**Scheduled workflows, in plain terms**\n\nIn aiFetchly you describe a task once and set when it should run. The agent then does it on that schedule — for example:\n\n- Every morning, collect new client emails and prepare a short summary with draft replies to review.\n- Every day, check documents for deadlines and list what needs attention.\n- Every week, gather research on a topic and save it to the business knowledge base.\n\nThe agent works from your local business knowledge base, and a person reviews the result before anything is sent or published. That review step matters: automation removes the routine, it does not remove the decision.\n\n**Why open source and local-first matter here**\n\nA scheduled agent touches your real business data every day, so where that data lives matters. With aiFetchly being open source and local-first, a team can inspect what it does and keep its documents local. Plugins let teams extend it for their own workflows.\n\n**Pricing**\n\naiFetchly has a free Community plan, Go at $5/month, Plus at $10/month, and Pro at $30/month. The AI Content Assistant is a Plus-only feature. Start with the free Community plan to test a scheduled workflow on your own repeat tasks.\n\nWhat repeat task would you schedule first? Tell us in the comments.\n\nLearn more: https://www.aifetchly.com",
+      "url": "",
+      "threadsUrl": "",
+      "community": "showcase",
+      "author": "aiFetchly",
+      "disclosure": "ai-assisted",
+      "type": "showcase",
+      "tags": [
+        "ai-agent",
+        "automation",
+        "local-first",
+        "scheduled-workflows"
+      ],
+      "score": 1,
+      "comments": [],
+      "reports": [],
+      "createdAt": "2026-11-11T23:20:30.622Z"
+    },
+    {
       "id": "p_40e9d205",
       "title": "Showcase: aiFetchly finds B2B leads for you — research, verify, and draft the first outreach",
       "body": "Hi, we're the aiFetchly team. This showcase post is from the team behind aiFetchly — an open-source, local-first desktop AI agent for business automation: research, document processing, customer communication, scheduled workflows, plugins, and a business knowledge base.\n\n## The problem: lead lists go stale fast\n\nFor a small B2B team, finding new prospects usually means hours of manual searching: company websites, directories, news, LinkedIn profiles. The list you build on Monday is already half out of date by Friday, and half the contacts have no clear reason why they were on the list at all.\n\n## A better loop: extract, verify, then reach out\n\nInstead of buying a static list, we think the loop should be:\n\n1. **Research first** — define who you are looking for (industry, size, region, signals like hiring or expansion) and let the agent gather candidate companies from public sources.\n2. **Extract the essentials** — company name, website, what they do, and a public contact point. Keep the source next to every fact so a human can check it.\n3. **Verify before you trust it** — a lead is only useful if the details check out. Drop anything you cannot confirm, and keep notes on why each lead made the cut.\n4. **Draft the first outreach** — use your business knowledge base (products, pricing, past cases) to draft a short, relevant first email. A person reviews every draft before anything is sent.\n\nThat last step matters most: the agent prepares the work, a human decides what goes out.\n\n## Why local-first matters for lead work\n\nLead research touches real company and contact data. aiFetchly runs on your desktop and keeps your business knowledge local, so your prospect lists and internal notes are not uploaded to a third-party cloud just to do the research.\n\nYou can see the lead-extraction flow in action here:\n\nhttps://www.youtube.com/watch?v=PvioetGLCaI\n\n## About aiFetchly\n\n- Open source, local-first desktop AI agent\n- Research, document processing, customer communication, scheduled workflows, plugins, business knowledge base\n- Free Community edition available; Plus plans start at $10/month\n- Website: https://www.aifetchly.com\n- GitHub: https://github.com/robertzengcn/aiFetchly\n\nIf you do B2B outreach, what is the most time-consuming part of your lead workflow — finding companies, verifying contacts, or writing the first message? Happy to compare notes in the comments.",
